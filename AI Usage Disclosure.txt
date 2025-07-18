@@ -1,0 +1,136 @@
+AI Usage Disclosure:
+
+### Models Used
+- ChatGPT-3.5
+- ChatGPT-4
+- ChatGPT-4o
+- CoPilot
+
+This code was supported by OpenAI ChatGPT-4.1, which was used to generate functions based on detailed implementation instructions, such as:
+“Write an Optuna objective function to hypertune the following Narx-Model.
+It should tune layers, neurons, activation functions, batch size, learning rate, dropout-rate and the loss function.
+The function should take an argument for outputcolumns, a cluster-label, the suffix of the model for the specific outputs, the data-directory and the amount of trials.”
+
+def objective(trial, label, data_dir, model_suffix, output_columns):
+    # Suggest hyperparameters
+    lag = trial.suggest_int("lag", 2, 5)
+    num_layers = trial.suggest_int("num_layers", 1, 4)
+    hidden_sizes = [trial.suggest_int(f"hidden_{i+1}", 8, 100) for i in range(num_layers)]
+    activation = trial.suggest_categorical("activation", ["relu", "gelu"])
+    batch_size = trial.suggest_categorical("batch_size", [64, 128])
+    lr = trial.suggest_loguniform("lr", 1e-5, 1e-3)
+    l1_lambda = trial.suggest_loguniform("l1_lambda", 1e-8, 1e-5)
+    l2_lambda = trial.suggest_loguniform("l2_lambda", 1e-12, 1e-5)
+    dropout = trial.suggest_float("dropout", 0.0, 0.2)
+    batchnorm = False
+    loss_function = trial.suggest_categorical("loss_function", ["mse", "huber"])
+    output_activation = None
+
+    # Build paths for this cluster
+    cluster_dir = os.path.join(data_dir, f"cluster_{label}")
+    train_path = os.path.join(cluster_dir, "train_all.csv")
+    val_path = os.path.join(cluster_dir, "val_all.csv")
+    test_path = os.path.join(cluster_dir, "test_all.csv")
+
+    val_loss = train_cluster(
+        train_path=train_path,
+        val_path=val_path,
+        test_path=test_path,
+        label=label,
+        lag=lag,
+        hidden_sizes=hidden_sizes,
+        loss_function=loss_function,
+        activation=activation,
+        epochs=150,
+        batch_size=batch_size,
+        lr=lr,
+        l1_lambda=l1_lambda,
+        l2_lambda=l2_lambda,
+        dropout=dropout,
+        batchnorm=batchnorm,
+        output_activation=output_activation,
+        patience=15,
+        verbose=False,
+        output_columns=output_columns,
+        model_suffix=model_suffix,
+        return_val_loss=True,
+    )
+    # In case something fails in train_cluster, return a high loss so Optuna discards it
+    if val_loss is None:
+        return 1e10
+    return val_loss
+
+
+
+### Innovative Iteration of the code e.g NARX_Model class
+Promt: "I have a simple PyTorch MLP-NARX model class that currently only supports fixed hidden_dims, dropout, and always uses the ReLU activation function. I want to make this class more flexible and suitable for hyperparameter tuning. Please rewrite the class so that I can specify the following options when initializing:
+    - Activation function (e.g., relu, tanh, sigmoid, gelu)
+    - Optional output activation function
+    - Optional batch normalization after each linear layer
+    - Dropout as a tunable hyperparameter
+    - Hidden layer sizes as a list
+
+The goal is to enable easy and systematic hyperparameter optimization (e.g., with Optuna or another library) and to allow for more experimentation with different architectures.
+Please write the class in a clear and readable way, and briefly document the new options in the code."
+
+
+class MLPNARX(nn.Module):
+    def __init__(self, input_dim: int, hidden_dims: list = [64, 32, 32], dropout: float = 0.1, output_dim: int = 1):
+        super(NARX_Model, self).__init__()
+
+        layers = []
+        prev_dim = input_dim
+
+        for hidden_dim in hidden_dims:
+            layers.append(nn.Linear(prev_dim, hidden_dim)) 
+            layers.append(nn.ReLU()) # Aktivierungsfunktion
+            # Dropout-Schicht
+            if dropout > 0:
+                layers.append(nn.Dropout(dropout))
+            prev_dim = hidden_dim
+
+        layers.append(nn.Linear(prev_dim, output_dim))
+        self.model = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.model(x)
+
+
+
+class MLPNARX(nn.Module):
+    def __init__(self, input_size, output_size, hidden_sizes, activation="relu",
+                 dropout=0.0, batchnorm=False, output_activation=None):
+        super().__init__()
+        acts = {
+            "relu": torch.nn.ReLU(),
+            "tanh": torch.nn.Tanh(),
+            "sigmoid": torch.nn.Sigmoid(),
+            "gelu": torch.nn.GELU()
+        }
+        layers = []
+        last_dim = input_size
+        for h in hidden_sizes:
+            layers.append(torch.nn.Linear(last_dim, h))
+            if batchnorm:
+                layers.append(torch.nn.BatchNorm1d(h))
+            layers.append(acts[activation])
+            if dropout > 0.0:
+                layers.append(torch.nn.Dropout(dropout))
+            last_dim = h
+        layers.append(torch.nn.Linear(last_dim, output_size))
+        if output_activation is not None and output_activation in acts:
+            layers.append(acts[output_activation])
+        self.net = torch.nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.net(x)
+
+
+
+
+All architectural and methodological choices, as well as the final integration, were determined by the author.
+
+
+
+
+

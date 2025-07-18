@@ -1,0 +1,14 @@
+{
+  "lag": 4,
+  "num_layers": 3,
+  "hidden_1": 55,
+  "hidden_2": 81,
+  "hidden_3": 19,
+  "activation": "gelu",
+  "batch_size": 128,
+  "lr": 0.00033927047566357317,
+  "l1_lambda": 2.357774182695726e-08,
+  "l2_lambda": 5.153162433047658e-07,
+  "dropout": 0.011034169871864384,
+  "loss_function": "huber"
+}

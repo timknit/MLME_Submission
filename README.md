@@ -1,10 +1,4 @@
 # MLME Submission
-<<<<<<< HEAD
-=======
-  - Here everyone can create their own folder and upload already completed scripts
-  - please use the data from the "data" folder so it isn't double
->>>>>>> 88206ed6cbfdade87e171af980d52a16e87b49a8
-
 ## Setup
     1. install packages from reqiurements
       
